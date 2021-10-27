@@ -71,7 +71,7 @@ def extract_data(postgres_url, spark):
     """
     df = spark.read.format('jdbc').options(
         url = postgres_url,
-        database='jshwelz',
+        database=Config.POSTGRES_DATABASE,
         dbtable='(select A.* from public."TicketComment" A inner join public."Ticket" B on A.ticket_id = B.id where B.status != \'Cerrado\') as TicketComment',
         driver='org.postgresql.Driver',
     ).load()    

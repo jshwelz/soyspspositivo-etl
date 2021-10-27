@@ -3,8 +3,9 @@ from schemas.agent import load_agent
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import lit, when, col , udf
 from pyspark.sql.types import IntegerType
+from config import Config
 
-def main():
+def run_etl_departments(postgres_url, sql_url_jdbc):
     """Main ETL script definition.
     :return: None
     """
@@ -12,16 +13,16 @@ def main():
     scSpark = SparkSession \
         .builder \
         .appName("reading postgresql") \
-        .config("spark.jars", "postgresql-42.2.23.jar") \
-        .config('spark.driver.extraClassPath', 'mssql-jdbc-9.4.0.jre8.jar')\
-        .config('spark.executor.extraClassPath', 'mssql-jdbc-9.4.0.jre8.jar')\
+        .config("spark.jars", "drivers/postgresql-42.2.23.jar") \
+        .config('spark.driver.extraClassPath', 'drivers/mssql-jdbc-9.4.0.jre8.jar')\
+        .config('spark.executor.extraClassPath', 'drivers/mssql-jdbc-9.4.0.jre8.jar')\
         .getOrCreate()
     
     # log that main ETL job is starting
     # execute ETL pipeline
-    data = extract_data(scSpark)
+    data = extract_data(postgres_url, scSpark)
     data_transformed = transform_data(data)
-    load_data(data_transformed)
+    load_data(sql_url_jdbc, data_transformed)
 
     # log the success and terminate Spark application    
     scSpark.stop()
@@ -41,32 +42,31 @@ def transform_data(df):
 
     return df_transformed
 
-def load_data(df):
+def load_data(sql_url, df):
     """Collect data locally and write to CSV.
     :param df: DataFrame to print.
     :return: None
     """
     #write the dataframe into a sql table
-    sqlsUrl = 'jdbc:sqlserver://localhost:1433;database=soyspspositivo-2'
-    
+        
     df.write.mode("append") \
         .format("jdbc") \
-        .option("url", sqlsUrl) \
+        .option("url", sql_url) \
         .option("dbtable", "Department") \
-        .option("user", "sa") \
-        .option("password", "Passw1rd") \
+        .option("user", Config.SQL_USERNAME) \
+        .option("password", Config.SQL_PASSWORD) \
         .option('driver', "com.microsoft.sqlserver.jdbc.SQLServerDriver")\
         .save()
     return None
 
-def extract_data(spark):
+def extract_data(postgres_url, spark):
     """Load data from Parquet file format.
     :param spark: Spark session object.
     :return: Spark DataFrame.
     """
     df = spark.read.format('jdbc').options(
-        url = "jdbc:postgresql://localhost/jshwelz?user=postgres&password='admin123'",
-        database='jshwelz',
+        url = postgres_url,
+        database=Config.POSTGRES_DATABASE,
         dbtable='public."Department"',
         driver='org.postgresql.Driver',
     ).load()    
