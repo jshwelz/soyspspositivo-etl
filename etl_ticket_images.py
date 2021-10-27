@@ -2,7 +2,7 @@
 from schemas.agent import load_agent
 from pyspark.sql import SparkSession, Window
 from pyspark.sql.functions import lit, when, col , udf, row_number, current_date
-from pyspark.sql.types import IntegerType
+from pyspark.sql.types import IntegerType, StringType
 from config import Config
 
 def main():
@@ -51,6 +51,7 @@ def run_etl_ticket_images(postgres_url, sql_url):
     scSpark.stop()
     return None 
 
+
 def transform_data(df):
     """Transform original dataset.
     :param df: Input DataFrame.
@@ -58,14 +59,21 @@ def transform_data(df):
         Street.
     :return: Transformed DataFrame.
     """    
-    
+    map_func_url = udf(lambda row : Config.TICKET_URL + row.split('/')[-1], StringType())
+    map_func_path = udf(lambda row : Config.TICKET_PATH + row.split('/')[-1], StringType())
+    map_func_cdn = udf(lambda row : row.split('/')[-1], StringType())
+
     df_transformed = df.withColumn("created_by", lit(1)) \
                        .withColumn("updated_by", lit(1)) \
-                       .drop("url") \
+                       .withColumn("cdn_id", map_func_cdn(df.path)) \
+                       .withColumn('file_name',map_func_cdn(df.path)) \
+                       .withColumn("url_external_cdn", map_func_cdn(df.path)) \
+                       .withColumn("url", map_func_url(df.path)) \
+                       .withColumn("path", map_func_path(df.path)) \
+                       .withColumn('mime_type',lit('image/jpeg')) \
+                       .withColumn('encoding',lit('7bit')) \
                        .drop("id") 
-                       
-                                              
-
+                                         
     return df_transformed
 
 def load_data(sql_url, df):
@@ -93,8 +101,8 @@ def extract_data(postgres_url, spark):
     """
     df = spark.read.format('jdbc').options(
         url = postgres_url,
-        database='jshwelz',
-        dbtable='public."TicketImage"',
+        database=Config.POSTGRES_DATABASE,
+        dbtable='(select A.* from public."TicketImage" A inner join public."Ticket" B on A.ticket_id = B.id where B.status != \'Cerrado\') as TicketImage',
         driver='org.postgresql.Driver',
     ).load()    
     return df
@@ -103,5 +111,8 @@ def extract_data(postgres_url, spark):
 
 # entry point for PySpark ETL application
 if __name__ == '__main__':
-    main()
+    postgres_url = "jdbc:postgresql://{host}/{db}?user={user}&password={passwd}".format(user=Config.POSTGRES_USERNAME, passwd=Config.POSTGRES_PASSWORD, 
+    host=Config.POSTGRES_HOST, db=Config.POSTGRES_DATABASE)
+    sql_url_jdbc = 'jdbc:sqlserver://{host}:{port};database={db}'.format(host=Config.SQL_HOST, port=Config.SQL_PORT, db=Config.SQL_DATABASE)    
+    run_etl_ticket_images(postgres_url, sql_url_jdbc)
     

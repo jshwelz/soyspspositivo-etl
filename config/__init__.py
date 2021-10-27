@@ -13,4 +13,5 @@ class Config:
     POSTGRES_PASSWORD='admin123'
     POSTGRES_HOST='docker.for.mac.localhost'    
     POSTGRES_DATABASE='jshwelz'
-    
+    TICKET_PATH = 'media/ticket-images/'
+    TICKET_URL = 'ticket-images/'
