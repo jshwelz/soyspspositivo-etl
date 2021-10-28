@@ -65,7 +65,7 @@ def transform_data(df):
                             .withColumn("agent_id", lit(1))\
                             .drop("status")\
                             .withColumnRenamed("district", "district_id")\
-                            .withColumnRenamed("report_id", "catery_id")
+                            .withColumnRenamed("report_id", "category_id")
 
 
     return df_transformed

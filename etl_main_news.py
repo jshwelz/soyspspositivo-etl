@@ -1,9 +1,9 @@
 from config import Config
-from tickets.etl_ticket import run_etl_ticket
-from tickets.etl_ticket_categories import run_etl_ticket_categories
-from tickets.etl_ticket_comments import run_etl_ticket_comments
-from tickets.etl_ticket_images import run_etl_ticket_images 
-from tickets.etl_department import run_etl_departments
+from etl_ticket import run_etl_ticket
+from etl_ticket_categories import run_etl_ticket_categories
+from etl_ticket_comments import run_etl_ticket_comments
+from etl_ticket_images import run_etl_ticket_images 
+from etl_department import run_etl_departments
 
 
 def main(postgres_url, sql_url, sql_url_jdbc):
