@@ -2,11 +2,13 @@ from config import Config
 from news.etl_news import run_etl_news
 from news.etl_news_categories import run_etl_news_categories
 from news.etl_news_images import run_etl_news_images
+from news.etl_news_master import run_etl_news_master
 
 def main(postgres_url, sql_url, sql_url_jdbc):
     run_etl_news_categories(postgres_url, sql_url)
     run_etl_news(postgres_url, sql_url)
     run_etl_news_images(postgres_url, sql_url_jdbc)
+    run_etl_news_master(postgres_url, sql_url_jdbc)
     
 if __name__ == '__main__':
     postgres_url = "jdbc:postgresql://{host}/{db}?user={user}&password={passwd}".format(user=Config.POSTGRES_USERNAME, passwd=Config.POSTGRES_PASSWORD, 
