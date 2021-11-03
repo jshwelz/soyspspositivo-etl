@@ -1,8 +1,10 @@
 
-from schemas.agent import load_agent
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import lit, when, col , udf
+from pyspark.sql.functions import lit, when, col, udf, trim
 from pyspark.sql.types import IntegerType
+import sqlalchemy
+import pyodbc
+import pandas as pd
 from config import Config
 
 def run_etl_news_categories(postgres_url, sql_url_jdbc):
@@ -36,10 +38,15 @@ def transform_data(df):
         Street.
     :return: Transformed DataFrame.
     """    
-    df_transformed = df.withColumn("created_by", lit(1)) \
+    df_transformed = df.withColumn("name", trim("name"))
+    df_transformed = df_transformed.withColumn("created_by", lit(1)) \
                        .withColumn("updated_by", lit(1)) \
-                       .drop("id")
+                       .withColumn("language_code", lit('es')) \
+                       .filter(df.name != "" ) \
+                       .dropDuplicates(['name']) \
+                       .drop("name_english")
 
+    
     return df_transformed
 
 def load_data(sql_url, df):
@@ -48,16 +55,15 @@ def load_data(sql_url, df):
     :return: None
     """
     #write the dataframe into a sql table
-        
-    df.write.mode("append") \
-        .format("jdbc") \
-        .option("url", sql_url) \
-        .option("dbtable", "NewsCategory") \
-        .option("user", Config.SQL_USERNAME) \
-        .option("password", Config.SQL_PASSWORD) \
-        .option('driver', "com.microsoft.sqlserver.jdbc.SQLServerDriver")\
-        .save()
-    return None
+    #write the dataframe into a sql table
+    engine = sqlalchemy.create_engine(sql_url)
+    with engine.connect() as con:
+        con.execute('SET IDENTITY_INSERT NewsCategory ON')
+    
+    pandasDF = df.toPandas()
+    #write the dataframe into a sql table
+    pandasDF.to_sql("NewsCategory", engine, if_exists='append', index=False)         
+
 
 def extract_data(postgres_url, spark):
     """Load data from Parquet file format.

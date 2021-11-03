@@ -2,8 +2,10 @@
 from schemas.agent import load_agent
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import lit, when, col , udf
-from pyspark.sql.types import IntegerType
+from pyspark.sql.types import IntegerType, StringType
 from config import Config
+import sqlalchemy
+import uuid
 
 def run_etl_news(postgres_url, sql_url_jdbc):
     """Main ETL script definition.
@@ -36,9 +38,20 @@ def transform_data(df):
         Street.
     :return: Transformed DataFrame.
     """    
+    mapping = {False: 3, True : 2}
+    map_func = udf(lambda row : mapping.get(row,row))  
+    uuidUdf= udf(lambda : str(uuid.uuid4()),StringType())
     df_transformed = df.withColumn("created_by", lit(1)) \
                        .withColumn("updated_by", lit(1)) \
-                       .drop("id")
+                       .withColumn("slug",uuidUdf())\
+                       .withColumn("excerpt", df.title)\
+                       .withColumn("published", map_func(col("published")).cast(IntegerType()))\
+                       .withColumn("language_code", lit('es')) \
+                       .drop("content_english")\
+                       .drop("main_image")\
+                       .drop("category_id")\
+                       .drop("published")\
+                       .drop("title_english")                       
 
     return df_transformed
 
@@ -49,15 +62,14 @@ def load_data(sql_url, df):
     """
     #write the dataframe into a sql table
         
-    df.write.mode("append") \
-        .format("jdbc") \
-        .option("url", sql_url) \
-        .option("dbtable", "News") \
-        .option("user", Config.SQL_USERNAME) \
-        .option("password", Config.SQL_PASSWORD) \
-        .option('driver', "com.microsoft.sqlserver.jdbc.SQLServerDriver")\
-        .save()
-    return None
+    # establishing the connection to the database using engine as an interface
+    engine = sqlalchemy.create_engine(sql_url)
+    with engine.connect() as con:
+        con.execute('SET IDENTITY_INSERT News ON')
+    
+    pandasDF = df.toPandas()
+    #write the dataframe into a sql table
+    pandasDF.to_sql("News", engine, if_exists='append', index=False)    
 
 def extract_data(postgres_url, spark):
     """Load data from Parquet file format.
