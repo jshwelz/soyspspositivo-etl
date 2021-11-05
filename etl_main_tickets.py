@@ -7,11 +7,11 @@ from tickets.etl_department import run_etl_departments
 
 
 def main(postgres_url, sql_url, sql_url_jdbc):
-    # run_etl_ticket_categories(postgres_url, sql_url)
-    # run_etl_ticket(postgres_url, sql_url)
+    run_etl_ticket_categories(postgres_url, sql_url)
+    run_etl_ticket(postgres_url, sql_url)
     run_etl_ticket_comments(postgres_url, sql_url_jdbc)
-    # run_etl_departments(postgres_url, sql_url_jdbc)
-    # run_etl_ticket_images(postgres_url, sql_url_jdbc)
+    run_etl_departments(postgres_url, sql_url_jdbc)
+    run_etl_ticket_images(postgres_url, sql_url_jdbc)
     
 if __name__ == '__main__':
     postgres_url = "jdbc:postgresql://{host}/{db}?user={user}&password={passwd}".format(user=Config.POSTGRES_USERNAME, passwd=Config.POSTGRES_PASSWORD, 
