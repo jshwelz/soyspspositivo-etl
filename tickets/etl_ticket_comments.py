@@ -1,10 +1,9 @@
 
-from schemas.agent import load_agent
 from pyspark.sql import SparkSession, Window
 from pyspark.sql.functions import lit, when, col , udf, row_number, current_date
 from pyspark.sql.types import IntegerType
 from config import Config
-
+from datetime import datetime
 
 def main():
     """Main ETL script definition.
@@ -42,10 +41,8 @@ def transform_data(df):
                        .withColumn("updated_by", lit(1)) \
                        .withColumnRenamed("note", "comment")\
                        .drop("id") 
-                       
-                                              
-
-    return df_transformed
+    df_filter_date = df_transformed.filter(df_transformed.created_at >= lit(Config.TICKETS_DATE))
+    return df_filter_date
 
 def load_data(sql_url, df):
     """Collect data locally and write to SQL.
@@ -69,10 +66,13 @@ def extract_data(postgres_url, spark):
     :param spark: Spark session object.
     :return: Spark DataFrame.
     """
+    date_time_obj = datetime.strptime(Config.TICKETS_DATE, '%Y-%m-%d')
+    ps_query = '(select A.* from public."TicketComment" A inner join public."Ticket" B on A.ticket_id = B.id where B.status != \'Cerrado\' and B.created_at > \'{ticket_date}\') as TicketComment'
+    ps_query = ps_query.format(ticket_date = str(date_time_obj))    
     df = spark.read.format('jdbc').options(
         url = postgres_url,
         database=Config.POSTGRES_DATABASE,
-        dbtable='(select A.* from public."TicketComment" A inner join public."Ticket" B on A.ticket_id = B.id where B.status != \'Cerrado\') as TicketComment',
+        dbtable=ps_query,
         driver='org.postgresql.Driver',
     ).load()    
        
@@ -108,6 +108,8 @@ if __name__ == '__main__':
     
     sql_url = 'mssql+pyodbc://{user}:{passwd}@{host}:{port}/{db}?driver=ODBC+Driver+17+for+SQL+Server'.format(user=Config.SQL_USERNAME, passwd=Config.SQL_PASSWORD, 
     host=Config.SQL_HOST, port=Config.SQL_PORT, db=Config.SQL_DATABASE)
-    run_etl_ticket_comments(postgres_url, sql_url)
+    sql_url_jdbc = 'jdbc:sqlserver://{host}:{port};database={db}'.format(host=Config.SQL_HOST, port=Config.SQL_PORT, db=Config.SQL_DATABASE)
+    
+    run_etl_ticket_comments(postgres_url, sql_url_jdbc)
     
     

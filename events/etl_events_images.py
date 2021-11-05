@@ -28,7 +28,7 @@ def main():
     scSpark.stop()
     return None    
 
-def run_etl_ticket_images(postgres_url, sql_url):
+def run_etl_events_images(postgres_url, sql_url):
     """Main ETL script definition.
     :return: None
     """
@@ -73,8 +73,8 @@ def transform_data(df):
                        .withColumn('mime_type',lit('image/jpeg')) \
                        .withColumn('encoding',lit('7bit')) \
                        .drop("id") 
-    df_filter_date = df_transformed.filter(df_transformed.created_at >= lit(Config.TICKETS_DATE))                          
-    return df_filter_date
+                                         
+    return df_transformed
 
 def load_data(sql_url, df):
     """Collect data locally and write to CSV.
@@ -87,7 +87,7 @@ def load_data(sql_url, df):
     df.write.mode("append") \
         .format("jdbc") \
         .option("url", sqlsUrl) \
-        .option("dbtable", "TicketImage") \
+        .option("dbtable", "EventImage") \
         .option("user", Config.SQL_USERNAME) \
         .option("password", Config.SQL_PASSWORD) \
         .option('driver', "com.microsoft.sqlserver.jdbc.SQLServerDriver")\
@@ -102,7 +102,7 @@ def extract_data(postgres_url, spark):
     df = spark.read.format('jdbc').options(
         url = postgres_url,
         database=Config.POSTGRES_DATABASE,
-        dbtable='(select A.* from public."TicketImage" A inner join public."Ticket" B on A.ticket_id = B.id where B.status != \'Cerrado\') as TicketImage',
+        dbtable='public."EventImage"',
         driver='org.postgresql.Driver',
     ).load()    
     return df
@@ -114,5 +114,5 @@ if __name__ == '__main__':
     postgres_url = "jdbc:postgresql://{host}/{db}?user={user}&password={passwd}".format(user=Config.POSTGRES_USERNAME, passwd=Config.POSTGRES_PASSWORD, 
     host=Config.POSTGRES_HOST, db=Config.POSTGRES_DATABASE)
     sql_url_jdbc = 'jdbc:sqlserver://{host}:{port};database={db}'.format(host=Config.SQL_HOST, port=Config.SQL_PORT, db=Config.SQL_DATABASE)    
-    run_etl_ticket_images(postgres_url, sql_url_jdbc)
+    run_etl_news_images(postgres_url, sql_url_jdbc)
     

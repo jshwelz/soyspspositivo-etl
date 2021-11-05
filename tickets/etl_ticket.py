@@ -67,8 +67,8 @@ def transform_data(df):
                             .withColumnRenamed("district", "district_id")\
                             .withColumnRenamed("report_id", "category_id")
 
-
-    return df_transformed
+    df_filter_date = df_transformed.filter(df_transformed.created_at >= lit(Config.TICKETS_DATE))
+    return df_filter_date
 
 def load_data(sql_url, df):
     """Collect data locally and write to SQL.
@@ -95,7 +95,7 @@ def extract_data(postgres_url, spark):
     df = spark.read.format('jdbc').options(
         url = postgres_url,
         database='jshwelz',
-        dbtable='public."Ticket"',
+        dbtable='(select A.* from public."Ticket" A  where A.status != \'Cerrado\') as Ticket',
         driver='org.postgresql.Driver',
     ).load()
     print(type(df))            
