@@ -58,6 +58,7 @@ def transform_data(df):
                        .withColumn("district_id", map_func(col("district_id")).cast(IntegerType()))\
                        .withColumn("language_code", lit('es')) \
                        .withColumn("published_at", df.created_at) \
+                       .withColumn("status_id", lit(7)) \
                        .drop("description_english")\
                        .drop("main_image")\
                        .drop("status")\
