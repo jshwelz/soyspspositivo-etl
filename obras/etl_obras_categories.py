@@ -1,22 +1,13 @@
 
-from schemas.agent import load_agent
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import lit, when, col , udf
-from pyspark.sql.types import IntegerType, StringType
-from config import Config
+from pyspark.sql.functions import lit, when, col, udf, trim
+from pyspark.sql.types import IntegerType
 import sqlalchemy
-import uuid
+import pyodbc
+import pandas as pd
+from config import Config
 
-
-def clean_events(sql_url):
-    engine = sqlalchemy.create_engine(sql_url)
-    with engine.connect() as con:
-        con.execute('delete from EventImage')
-        con.execute('delete from EventCategory')
-        con.execute('delete from Event')
-
-
-def run_etl_events(postgres_url, sql_url_jdbc):
+def run_etl_obras_categories(postgres_url, sql_url_jdbc):
     """Main ETL script definition.
     :return: None
     """
@@ -47,43 +38,32 @@ def transform_data(df):
         Street.
     :return: Transformed DataFrame.
     """    
-    mapping = {False: 3, True : 2}
-    map_func = udf(lambda row : mapping.get(row,row))  
-    uuidUdf= udf(lambda : str(uuid.uuid4()),StringType())
-    df_transformed = df.withColumn("created_by", lit(1)) \
+    df_transformed = df.withColumn("name", trim("name"))
+    df_transformed = df_transformed.withColumn("created_by", lit(1)) \
                        .withColumn("updated_by", lit(1)) \
-                       .withColumn("slug",uuidUdf())\
-                       .withColumn("excerpt", df.name)\
                        .withColumn("language_code", lit('es')) \
-                       .withColumnRenamed("start", "start_date")\
-                       .withColumnRenamed("end", "end_date")\
-                       .withColumn("published_at", df.created_at) \
-                       .withColumn("status_id", lit(7))\
-                       .drop("description_english_text")\
-                       .drop("main_image")\
-                       .drop("category_id")\
-                       .withColumnRenamed("lat", "latitude")\
-                       .withColumnRenamed("lng", "longitude")\
-                       .drop("price")\
-                       .drop("name_english")                                              
+                       .filter(df.name != "" ) \
+                       .dropDuplicates(['name']) \
+                       .drop("name_english")
 
+    
     return df_transformed
 
 def load_data(sql_url, df):
-    """Collect data locally.
+    """Collect data locally and write to CSV.
     :param df: DataFrame to print.
     :return: None
     """
     #write the dataframe into a sql table
-        
-    # establishing the connection to the database using engine as an interface
+    #write the dataframe into a sql table
     engine = sqlalchemy.create_engine(sql_url)
     with engine.connect() as con:
-        con.execute('SET IDENTITY_INSERT Event ON')
+        con.execute('SET IDENTITY_INSERT ConstructionType ON')
     
     pandasDF = df.toPandas()
     #write the dataframe into a sql table
-    pandasDF.to_sql("Event", engine, if_exists='append', index=False)    
+    pandasDF.to_sql("ConstructionType", engine, if_exists='append', index=False)         
+
 
 def extract_data(postgres_url, spark):
     """Load data from Parquet file format.
@@ -93,7 +73,7 @@ def extract_data(postgres_url, spark):
     df = spark.read.format('jdbc').options(
         url = postgres_url,
         database=Config.POSTGRES_DATABASE,
-        dbtable='public."Event"',
+        dbtable='public."ConstructionType"',
         driver='org.postgresql.Driver',
     ).load()    
     return df

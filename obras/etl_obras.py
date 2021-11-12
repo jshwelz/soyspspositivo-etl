@@ -7,16 +7,7 @@ from config import Config
 import sqlalchemy
 import uuid
 
-
-def clean_events(sql_url):
-    engine = sqlalchemy.create_engine(sql_url)
-    with engine.connect() as con:
-        con.execute('delete from EventImage')
-        con.execute('delete from EventCategory')
-        con.execute('delete from Event')
-
-
-def run_etl_events(postgres_url, sql_url_jdbc):
+def run_etl_obras(postgres_url, sql_url_jdbc):
     """Main ETL script definition.
     :return: None
     """
@@ -39,6 +30,14 @@ def run_etl_events(postgres_url, sql_url_jdbc):
     scSpark.stop()
     return None    
 
+def clean_obras(sql_url):
+    engine = sqlalchemy.create_engine(sql_url)
+    with engine.connect() as con:
+        con.execute('delete from ConstructionImage')
+        con.execute('delete from ConstructionComment')
+        con.execute('delete from Construction')
+        con.execute('delete from ConstructionType')
+
 
 def transform_data(df):
     """Transform original dataset.
@@ -47,26 +46,28 @@ def transform_data(df):
         Street.
     :return: Transformed DataFrame.
     """    
-    mapping = {False: 3, True : 2}
-    map_func = udf(lambda row : mapping.get(row,row))  
+    districts = {5: 6}
+
+    mapping = {False: 1, True : 7}
+    map_func = udf(lambda row : districts.get(row,row))  
     uuidUdf= udf(lambda : str(uuid.uuid4()),StringType())
     df_transformed = df.withColumn("created_by", lit(1)) \
                        .withColumn("updated_by", lit(1)) \
                        .withColumn("slug",uuidUdf())\
                        .withColumn("excerpt", df.name)\
+                       .withColumn("district_id", map_func(col("district_id")).cast(IntegerType()))\
                        .withColumn("language_code", lit('es')) \
-                       .withColumnRenamed("start", "start_date")\
-                       .withColumnRenamed("end", "end_date")\
                        .withColumn("published_at", df.created_at) \
-                       .withColumn("status_id", lit(7))\
-                       .drop("description_english_text")\
+                       .drop("description_english")\
                        .drop("main_image")\
-                       .drop("category_id")\
+                       .drop("status")\
+                       .drop("investment_english")\
                        .withColumnRenamed("lat", "latitude")\
                        .withColumnRenamed("lng", "longitude")\
+                       .withColumnRenamed("start", "started_at")\
+                       .withColumnRenamed("end", "ended_at")\
                        .drop("price")\
-                       .drop("name_english")                                              
-
+                       .drop("name_english") 
     return df_transformed
 
 def load_data(sql_url, df):
@@ -79,11 +80,11 @@ def load_data(sql_url, df):
     # establishing the connection to the database using engine as an interface
     engine = sqlalchemy.create_engine(sql_url)
     with engine.connect() as con:
-        con.execute('SET IDENTITY_INSERT Event ON')
+        con.execute('SET IDENTITY_INSERT Construction ON')
     
     pandasDF = df.toPandas()
     #write the dataframe into a sql table
-    pandasDF.to_sql("Event", engine, if_exists='append', index=False)    
+    pandasDF.to_sql("Construction", engine, if_exists='append', index=False)    
 
 def extract_data(postgres_url, spark):
     """Load data from Parquet file format.
@@ -93,7 +94,7 @@ def extract_data(postgres_url, spark):
     df = spark.read.format('jdbc').options(
         url = postgres_url,
         database=Config.POSTGRES_DATABASE,
-        dbtable='public."Event"',
+        dbtable='public."Construction"',
         driver='org.postgresql.Driver',
     ).load()    
     return df

@@ -30,6 +30,13 @@ def run_etl_news(postgres_url, sql_url_jdbc):
     scSpark.stop()
     return None    
 
+def clean_news(sql_url):
+    engine = sqlalchemy.create_engine(sql_url)
+    with engine.connect() as con:
+        con.execute('delete from NewsImage')
+        con.execute('delete from NewsCategory')
+        con.execute('delete from News')
+
 
 def transform_data(df):
     """Transform original dataset.
@@ -38,15 +45,16 @@ def transform_data(df):
         Street.
     :return: Transformed DataFrame.
     """    
-    mapping = {False: 3, True : 2}
+    mapping = {False: 1, True : 7}
     map_func = udf(lambda row : mapping.get(row,row))  
     uuidUdf= udf(lambda : str(uuid.uuid4()),StringType())
     df_transformed = df.withColumn("created_by", lit(1)) \
                        .withColumn("updated_by", lit(1)) \
                        .withColumn("slug",uuidUdf())\
                        .withColumn("excerpt", df.title)\
-                       .withColumn("published", map_func(col("published")).cast(IntegerType()))\
+                       .withColumn("status_id", map_func(col("published")).cast(IntegerType()))\
                        .withColumn("language_code", lit('es')) \
+                       .withColumn("published_at", df.created_at) \
                        .drop("content_english")\
                        .drop("main_image")\
                        .drop("category_id")\
@@ -56,7 +64,7 @@ def transform_data(df):
     return df_transformed
 
 def load_data(sql_url, df):
-    """Collect data locally and write to CSV.
+    """Collect data locally.
     :param df: DataFrame to print.
     :return: None
     """

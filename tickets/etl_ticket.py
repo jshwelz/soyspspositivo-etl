@@ -31,6 +31,14 @@ def main(postgres_url, sql_url):
     scSpark.stop()
     return None    
 
+def clean_tickets(sql_url):
+    engine = sqlalchemy.create_engine(sql_url)
+    with engine.connect() as con:
+        con.execute('delete from Department')
+        con.execute('delete from TicketImage')
+        con.execute('delete from TicketComment')
+        con.execute('delete from Ticket')
+        con.execute('delete from TicketCategory')
 
 def transform_data(df):
     """Transform original dataset.

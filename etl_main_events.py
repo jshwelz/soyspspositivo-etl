@@ -1,14 +1,15 @@
 from config import Config
-from events.etl_events import run_etl_events
+from events.etl_events import run_etl_events, clean_events
 from events.etl_events_categories import run_etl_events_categories
 from events.etl_events_images import run_etl_events_images
 
 
 def main(postgres_url, sql_url, sql_url_jdbc):
+    clean_events(sql_url)
     run_etl_events_categories(postgres_url, sql_url)
     run_etl_events(postgres_url, sql_url)
     run_etl_events_images(postgres_url, sql_url_jdbc)
-    # run_etl_news_master(postgres_url, sql_url_jdbc)
+    
     
 if __name__ == '__main__':
     postgres_url = "jdbc:postgresql://{host}/{db}?user={user}&password={passwd}".format(user=Config.POSTGRES_USERNAME, passwd=Config.POSTGRES_PASSWORD, 
