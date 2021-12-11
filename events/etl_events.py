@@ -61,7 +61,7 @@ def transform_data(df):
                        .withColumn("status_id", lit(7))\
                        .drop("description_english_text")\
                        .drop("main_image")\
-                       .drop("category_id")\
+                       .withColumnRenamed("category_id", "event_category_id")\
                        .withColumnRenamed("lat", "latitude")\
                        .withColumnRenamed("lng", "longitude")\
                        .drop("price")\

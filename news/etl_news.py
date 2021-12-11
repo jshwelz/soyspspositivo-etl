@@ -36,6 +36,7 @@ def clean_news(sql_url):
         con.execute('delete from NewsImage')
         con.execute('delete from NewsCategory')
         con.execute('delete from News')
+        con.execute('delete from news_categories__news_category')
 
 
 def transform_data(df):

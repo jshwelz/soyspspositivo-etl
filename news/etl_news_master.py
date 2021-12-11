@@ -37,8 +37,12 @@ def transform_data(df):
     :param steps_per_floor_: The number of steps per-floor at 43 Tanner
         Street.
     :return: Transformed DataFrame.
-    """        
-    df_transformed = df                                                                                                                       
+    """     
+    df_transformed = df.withColumn("name", trim("name"))
+    df_transformed = df_transformed.filter(df.name != "" ) \
+                       .dropDuplicates(['name'])                       
+    df_transformed = df_transformed.drop("name")                       
+    df_transformed = df_transformed                                                                                                                       
     return df_transformed
 
 def load_data(sql_url, df):
@@ -51,7 +55,7 @@ def load_data(sql_url, df):
     df.write.mode("append") \
         .format("jdbc") \
         .option("url", sql_url) \
-        .option("dbtable", "news_cateries__news_catery") \
+        .option("dbtable", "news_categories__news_category") \
         .option("user", Config.SQL_USERNAME) \
         .option("password", Config.SQL_PASSWORD) \
         .option('driver', "com.microsoft.sqlserver.jdbc.SQLServerDriver")\
@@ -67,7 +71,7 @@ def extract_data(postgres_url, spark):
     df = spark.read.format('jdbc').options(
         url = postgres_url,
         database=Config.POSTGRES_DATABASE,
-        dbtable='(select A.id as newsId,B.id as NewsCategoryId from public."News" A inner join public."NewsCategory" B on A.category_id = B.id) as NewsMaster',
+        dbtable='(select A.id as newsId,B.id as NewsCategoryId,B.name from public."News" A inner join public."NewsCategory" B on A.category_id = B.id) as NewsMaster',
         driver='org.postgresql.Driver',
     ).load()    
     return df
