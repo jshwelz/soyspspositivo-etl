@@ -6,7 +6,7 @@ from pyspark.sql.types import IntegerType, StringType
 from config import Config
 import sqlalchemy
 import uuid
-
+import datetime
 
 def clean_events(sql_url):
     engine = sqlalchemy.create_engine(sql_url)
@@ -54,9 +54,9 @@ def transform_data(df):
                        .withColumn("updated_by", lit(1)) \
                        .withColumn("slug",uuidUdf())\
                        .withColumn("excerpt", df.name)\
+                       .withColumn("end_date", (df.start + datetime.timedelta(days=1)))\
                        .withColumn("language_code", lit('es')) \
                        .withColumnRenamed("start", "start_date")\
-                       .withColumnRenamed("end", "end_date")\
                        .withColumn("published_at", df.created_at) \
                        .withColumn("status_id", lit(7))\
                        .drop("description_english_text")\
