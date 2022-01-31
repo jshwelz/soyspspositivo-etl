@@ -6,14 +6,17 @@ from pyspark.sql.types import IntegerType, StringType
 from config import Config
 import sqlalchemy
 import uuid
-import datetime
+from datetime import datetime, timedelta
 
 def clean_events(sql_url):
     engine = sqlalchemy.create_engine(sql_url)
     with engine.connect() as con:
-        con.execute('delete from EventImage')
-        con.execute('delete from EventCategory')
         con.execute('delete from Event')
+        con.execute('delete from EventCategory')
+        con.execute('delete from EventImage')        
+        con.execute('delete from EventComment')
+        
+        
 
 
 def run_etl_events(postgres_url, sql_url_jdbc):
@@ -49,12 +52,18 @@ def transform_data(df):
     """    
     mapping = {False: 3, True : 2}
     map_func = udf(lambda row : mapping.get(row,row))  
+    
+    # define UDF based on OP's function
+    ceil_dt = udf(lambda dt: dt + timedelta(days=1))
+    
+    # now apply to timestamp columns    
     uuidUdf= udf(lambda : str(uuid.uuid4()),StringType())
+    
     df_transformed = df.withColumn("created_by", lit(1)) \
                        .withColumn("updated_by", lit(1)) \
                        .withColumn("slug",uuidUdf())\
                        .withColumn("excerpt", df.name)\
-                       .withColumn("end_date", (df.start + datetime.timedelta(days=1)))\
+                       .withColumn("end_date", ceil_dt(df.start) ) \
                        .withColumn("language_code", lit('es')) \
                        .withColumnRenamed("start", "start_date")\
                        .withColumn("published_at", df.created_at) \
