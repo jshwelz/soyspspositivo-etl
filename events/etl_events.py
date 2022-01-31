@@ -63,9 +63,10 @@ def transform_data(df):
                        .withColumn("updated_by", lit(1)) \
                        .withColumn("slug",uuidUdf())\
                        .withColumn("excerpt", df.name)\
-                       .withColumn("end_date", ceil_dt(df.start) ) \
+                       .withColumn("end", ceil_dt(df.start) ) \
                        .withColumn("language_code", lit('es')) \
                        .withColumnRenamed("start", "start_date")\
+                       .withColumnRenamed("end", "end_date")\
                        .withColumn("published_at", df.created_at) \
                        .withColumn("status_id", lit(7))\
                        .drop("description_english_text")\
