@@ -65,14 +65,17 @@ def transform_data(df):
 
     df_transformed = df.withColumn("created_by", lit(1)) \
                        .withColumn("updated_by", lit(1)) \
-                       .withColumn("cdn_id", map_func_cdn(df.path)) \
-                       .withColumn('file_name',map_func_cdn(df.path)) \
-                       .withColumn("url_external_cdn", map_func_cdn(df.path)) \
-                       .withColumn("url", map_func_url(df.path)) \
-                       .withColumn("path", map_func_path(df.path)) \
+                       .withColumn("cdn_id", map_func_cdn(df.main_image)) \
+                       .withColumn('file_name',map_func_cdn(df.main_image)) \
+                       .withColumn("url_external_cdn", map_func_cdn(df.main_image)) \
+                       .withColumn("url", map_func_url(df.main_image)) \
+                       .withColumn("path", map_func_path(df.main_image)) \
                        .withColumn('mime_type',lit('image/jpeg')) \
                        .withColumn('encoding',lit('7bit')) \
-                       .drop("id") 
+                       .drop("id") \
+                       .drop("main_image") \
+                       .drop("eventimageid") 
+    
                                          
     return df_transformed
 
@@ -102,9 +105,16 @@ def extract_data(postgres_url, spark):
     df = spark.read.format('jdbc').options(
         url = postgres_url,
         database=Config.POSTGRES_DATABASE,
-        dbtable='public."EventImage"',
+        dbtable='(select B.id as EventImageid,A.main_image,B.* from public."Event" A inner join public."EventImage" B on A.id = B.event_id) as Event',
         driver='org.postgresql.Driver',
     ).load()    
+    
+    # df = spark.read.format('jdbc').options(
+    #     url = postgres_url,
+    #     database=Config.POSTGRES_DATABASE,
+    #     dbtable='(select A.id as newsId,B.id as NewsCategoryId,B.name from public."News" A inner join public."NewsCategory" B on A.category_id = B.id) as NewsMaster',
+    #     driver='org.postgresql.Driver',
+    # ).load() 
     return df
     
 
