@@ -72,11 +72,28 @@ def transform_data(df):
                        .withColumn("path", map_func_path(df.main_image)) \
                        .withColumn('mime_type',lit('image/jpeg')) \
                        .withColumn('encoding',lit('7bit')) \
+                       .withColumnRenamed("id", "event_id")\
                        .drop("id") \
                        .drop("main_image") \
-                       .drop("eventimageid") 
+                       .drop("name") \
+                       .drop("name_english") \
+                       .drop("main_image") \
+                       .drop("category_id") \
+                       .drop("lat") \
+                       .drop("lng") \
+                       .drop("state") \
+                       .drop("route") \
+                       .drop("country") \
+                       .drop("neighborhood") \
+                       .drop("postal_code") \
+                       .drop("start") \
+                       .drop("end") \
+                       .drop("description") \
+                       .drop("location") \
+                       .drop("price") \
+                       .drop("description_english_text") 
     
-                                         
+    df_transformed.show(n=3)
     return df_transformed
 
 def load_data(sql_url, df):
@@ -87,14 +104,20 @@ def load_data(sql_url, df):
     #write the dataframe into a sql table
     sqlsUrl = sql_url
     
-    df.write.mode("append") \
-        .format("jdbc") \
-        .option("url", sqlsUrl) \
-        .option("dbtable", "EventImage") \
-        .option("user", Config.SQL_USERNAME) \
-        .option("password", Config.SQL_PASSWORD) \
-        .option('driver', "com.microsoft.sqlserver.jdbc.SQLServerDriver")\
-        .save()
+    try:
+        df.write.mode("append") \
+            .format("jdbc") \
+            .option("url", sqlsUrl) \
+            .option("dbtable", "EventImage") \
+            .option("user", Config.SQL_USERNAME) \
+            .option("password", Config.SQL_PASSWORD) \
+            .option('driver', "com.microsoft.sqlserver.jdbc.SQLServerDriver")\
+            .save()
+    except Exception as e:
+        print(e)
+
+    print('im here')
+
     return None
 
 def extract_data(postgres_url, spark):
@@ -105,16 +128,11 @@ def extract_data(postgres_url, spark):
     df = spark.read.format('jdbc').options(
         url = postgres_url,
         database=Config.POSTGRES_DATABASE,
-        dbtable='(select B.id as EventImageid,A.main_image,B.* from public."Event" A inner join public."EventImage" B on A.id = B.event_id) as Event',
+        dbtable='public."Event"',
         driver='org.postgresql.Driver',
     ).load()    
     
-    # df = spark.read.format('jdbc').options(
-    #     url = postgres_url,
-    #     database=Config.POSTGRES_DATABASE,
-    #     dbtable='(select A.id as newsId,B.id as NewsCategoryId,B.name from public."News" A inner join public."NewsCategory" B on A.category_id = B.id) as NewsMaster',
-    #     driver='org.postgresql.Driver',
-    # ).load() 
+
     return df
     
 

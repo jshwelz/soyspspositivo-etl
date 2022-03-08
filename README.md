@@ -7,4 +7,4 @@ docker exec -it soyspspositivo-etl-run python3 etl_main_news.py
 
 
 Copy and Run commands inside Docker
-docker cp news/etl_news_categ  deede28659ce:/app/obras/
+docker cp events/etl_events_images.py deede28659ce:/app/events/
